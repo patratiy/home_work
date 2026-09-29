@@ -5,6 +5,9 @@ lint:
   stage: lint
   tags:
     - golang
+  before_script:
+    - command -v golangci-lint >/dev/null 2>&1 || curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin
+    - export PATH=$PATH:$(go env GOPATH)/bin
   script:
     - golangci-lint run ./...
   cache:
