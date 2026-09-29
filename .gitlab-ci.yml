@@ -3,7 +3,8 @@ stages:
 
 lint:
   stage: lint
-  image: golangci/golangci-lint:latest
+  tags:
+    - golang
   script:
     - golangci-lint run ./...
   cache:
