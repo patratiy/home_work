@@ -6,7 +6,7 @@ lint:
   tags:
     - golang
   before_script:
-    - command -v golangci-lint >/dev/null 2>&1 || curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin
+    - command -v golangci-lint >/dev/null 2>&1 || curl -sSfL --retry 3 https://raw.githubusercontent.com/golangci/golangci-lint/v1.64.8/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.64.8
     - export PATH=$PATH:$(go env GOPATH)/bin
   script:
     - golangci-lint run ./...
