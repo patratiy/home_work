@@ -1,4 +1,4 @@
-module github.com/patratiy/home_work
+module github.com/patratiy/home_work/hw01_hello_otus
 
 go 1.24
 
