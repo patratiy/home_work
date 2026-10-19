@@ -1,4 +1,5 @@
-// Package hw02unpackstring implements primitive string unpacking.
+// Package hw02unpackstring designed for unpacking strings into simple structures,
+// as well as cleaning them from non-ASCII values and special characters.
 package hw02unpackstring
 
 import (
