@@ -48,4 +48,78 @@ func TestList(t *testing.T) {
 		}
 		require.Equal(t, []int{70, 80, 60, 40, 10, 30, 50}, elems)
 	})
+
+	t.Run("push front and back", func(t *testing.T) {
+		l := NewList()
+
+		first := l.PushFront(10) // [10]
+		require.Equal(t, 1, l.Len())
+		require.Same(t, first, l.Front())
+		require.Same(t, first, l.Back())
+		require.Nil(t, first.Prev)
+		require.Nil(t, first.Next)
+
+		second := l.PushBack(20) // [10, 20]
+		require.Equal(t, 2, l.Len())
+		require.Same(t, first, l.Front())
+		require.Same(t, second, l.Back())
+		require.Same(t, first, second.Prev)
+		require.Same(t, second, first.Next)
+
+		third := l.PushFront(0) // [0, 10, 20]
+		require.Equal(t, 3, l.Len())
+		require.Same(t, third, l.Front())
+		require.Same(t, second, l.Back())
+		require.Same(t, third, first.Prev)
+		require.Same(t, first, third.Next)
+	})
+
+	t.Run("remove first, last and only element", func(t *testing.T) {
+		l := NewList()
+
+		only := l.PushBack(1) // [1]
+		l.Remove(only)
+		require.Equal(t, 0, l.Len())
+		require.Nil(t, l.Front())
+		require.Nil(t, l.Back())
+
+		first := l.PushBack(2)
+		l.PushBack(3)
+		last := l.PushBack(4) // [2, 3, 4]
+
+		l.Remove(first) // [3, 4]
+		require.Equal(t, 2, l.Len())
+		require.Equal(t, 3, l.Front().Value)
+		require.Nil(t, l.Front().Prev)
+
+		l.Remove(last) // [3]
+		require.Equal(t, 1, l.Len())
+		require.Equal(t, 3, l.Back().Value)
+		require.Nil(t, l.Back().Next)
+	})
+
+	t.Run("move to front", func(t *testing.T) {
+		l := NewList()
+		l.PushBack(1)
+		l.PushBack(2)
+		back := l.PushBack(3) // [1, 2, 3]
+
+		l.MoveToFront(back) // [3, 1, 2]
+		require.Equal(t, []int{3, 1, 2}, listValues(l))
+
+		l.MoveToFront(l.Front().Next) // [1, 3, 2]
+		require.Equal(t, []int{1, 3, 2}, listValues(l))
+
+		l.MoveToFront(l.Front()) // already at the front: no-op
+		require.Equal(t, []int{1, 3, 2}, listValues(l))
+		require.Equal(t, 3, l.Len())
+	})
+}
+
+func listValues(lst List) []int {
+	elements := make([]int, 0, lst.Len())
+	for i := lst.Front(); i != nil; i = i.Next {
+		elements = append(elements, i.Value.(int))
+	}
+	return elements
 }
