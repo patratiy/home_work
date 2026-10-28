@@ -29,7 +29,7 @@ type wordNormalizer func(word string) (string, bool)
 
 func topWords(text string, normalize wordNormalizer) []string {
 	words := strings.Fields(text)
-	frequency := make(map[string]int, len(words))
+	frequency := make(map[string]int)
 	for _, word := range words {
 		if normalize != nil {
 			var keep bool
