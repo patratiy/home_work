@@ -40,12 +40,18 @@ func (cache *lruCache) Set(key Key, value interface{}) bool {
 		return true
 	}
 
-	cache.items[key] = cache.queue.PushFront(&cacheItem{key: key, value: value})
-	if cache.queue.Len() > cache.capacity {
+	if cache.capacity <= 0 {
+		return false
+	}
+
+	// Evict the least recently used element first, so the queue never exceeds its capacity.
+	if cache.queue.Len() == cache.capacity {
 		last := cache.queue.Back()
 		cache.queue.Remove(last)
 		delete(cache.items, last.Value.(*cacheItem).key)
 	}
+
+	cache.items[key] = cache.queue.PushFront(&cacheItem{key: key, value: value})
 	return false
 }
 
