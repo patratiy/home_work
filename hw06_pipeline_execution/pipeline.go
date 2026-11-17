@@ -36,8 +36,7 @@ func link(source In, done In) In {
 			select {
 			case <-done:
 				closeDest()
-				for range source {
-				}
+				drain(source)
 				return
 			case val, ok := <-source:
 				if !ok {
@@ -46,8 +45,7 @@ func link(source In, done In) In {
 				select {
 				case <-done:
 					closeDest()
-					for range source {
-					}
+					drain(source)
 					return
 				case destination <- val:
 				}
@@ -55,4 +53,13 @@ func link(source In, done In) In {
 		}
 	}()
 	return destination
+}
+
+// drain reads source until it is closed, allowing upstream stages to finish.
+func drain(source In) {
+	for {
+		if _, ok := <-source; !ok {
+			return
+		}
+	}
 }
