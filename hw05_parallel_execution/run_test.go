@@ -68,3 +68,102 @@ func TestRun(t *testing.T) {
 		require.LessOrEqual(t, int64(elapsedTime), int64(sumTime/2), "tasks were run sequentially?")
 	})
 }
+
+func TestRunIgnoredErrors(t *testing.T) {
+	defer goleak.VerifyNone(t)
+
+	for _, errorsLimit := range []int{0, -1} {
+		t.Run(fmt.Sprintf("errors limit %d", errorsLimit), func(t *testing.T) {
+			tasksCount := 100
+			tasks := make([]Task, 0, tasksCount)
+
+			var runTasksCount int32
+
+			for i := 0; i < tasksCount; i++ {
+				err := fmt.Errorf("task %d error", i)
+				tasks = append(tasks, func() error {
+					atomic.AddInt32(&runTasksCount, 1)
+					return err
+				})
+			}
+
+			err := Run(tasks, 5, errorsLimit)
+
+			require.NoError(t, err)
+			require.Equal(t, int32(tasksCount), runTasksCount, "not all tasks were run with ignored errors")
+		})
+	}
+}
+
+func TestRunErrorsBelowLimit(t *testing.T) {
+	defer goleak.VerifyNone(t)
+
+	const (
+		tasksCount  = 20
+		errorsCount = 3
+	)
+
+	errorsLimit := errorsCount + 2
+
+	tasks := make([]Task, 0, tasksCount)
+	var runTasksCount int32
+
+	for i := 0; i < tasksCount; i++ {
+		var taskErr error
+		if i < errorsCount {
+			taskErr = fmt.Errorf("task %d failed", i)
+		}
+
+		tasks = append(tasks, func() error {
+			atomic.AddInt32(&runTasksCount, 1)
+			return taskErr
+		})
+	}
+
+	err := Run(tasks, 4, errorsLimit)
+
+	require.NoError(t, err)
+	require.Equal(t, int32(tasksCount), runTasksCount, "not all tasks were run when errors were below the limit")
+}
+
+func TestRunConcurrencyWithoutSleep(t *testing.T) {
+	defer goleak.VerifyNone(t)
+
+	const (
+		tasksCount   = 10
+		workersCount = 5
+	)
+
+	var started atomic.Int32
+	release := make(chan struct{})
+
+	tasks := make([]Task, 0, tasksCount)
+	for range tasksCount {
+		tasks = append(tasks, func() error {
+			started.Add(1)
+			<-release
+			return nil
+		})
+	}
+
+	var runErr error
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		runErr = Run(tasks, workersCount, 1)
+	}()
+
+	// Exactly workersCount tasks must start and stay blocked, tasks run concurrently.
+	require.Eventually(t, func() bool {
+		return started.Load() == int32(workersCount)
+	}, time.Second, 10*time.Millisecond)
+
+	// While the workers are blocked, no extra tasks will be started.
+	require.Equal(t, int32(workersCount), started.Load())
+
+	close(release)
+	<-done
+
+	require.NoError(t, runErr)
+	require.Equal(t, int32(tasksCount), started.Load(), "not all tasks were completed after release")
+}
