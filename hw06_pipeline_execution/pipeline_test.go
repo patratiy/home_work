@@ -148,3 +148,79 @@ func TestAllStageStop(t *testing.T) {
 
 	})
 }
+
+func TestPipelineEdgeCases(t *testing.T) {
+	t.Run("empty stages list", func(t *testing.T) {
+		in := make(Bi)
+		data := []int{1, 2, 3}
+		go func() {
+			for _, v := range data {
+				in <- v
+			}
+			close(in)
+		}()
+
+		result := make([]interface{}, 0)
+		for s := range ExecutePipeline(in, nil) {
+			result = append(result, s)
+		}
+
+		require.Equal(t, []interface{}{1, 2, 3}, result)
+	})
+
+	t.Run("empty input channel", func(t *testing.T) {
+		in := make(Bi)
+		close(in)
+
+		stages := []Stage{
+			func(in In) Out {
+				out := make(Bi)
+				go func() {
+					defer close(out)
+					for v := range in {
+						out <- v
+					}
+				}()
+				return out
+			},
+		}
+
+		result := make([]interface{}, 0)
+		for s := range ExecutePipeline(in, nil, stages...) {
+			result = append(result, s)
+		}
+
+		require.Len(t, result, 0)
+	})
+
+	t.Run("done already closed", func(t *testing.T) {
+		in := make(Bi)
+		done := make(Bi)
+		close(done)
+
+		stages := []Stage{
+			func(in In) Out {
+				out := make(Bi)
+				go func() {
+					defer close(out)
+					for v := range in {
+						out <- v
+					}
+				}()
+				return out
+			},
+		}
+
+		go func() {
+			in <- 1
+			close(in)
+		}()
+
+		result := make([]interface{}, 0)
+		for s := range ExecutePipeline(in, done, stages...) {
+			result = append(result, s)
+		}
+
+		require.Len(t, result, 0)
+	})
+}
